@@ -97,6 +97,7 @@ namespace WerewolfAPI.Model
         /// <summary>
         /// Defines Outcome
         /// </summary>
+        [JsonConverter(typeof(StringEnumConverter))]
         public enum OutcomeEnum
         {
             
@@ -133,7 +134,7 @@ namespace WerewolfAPI.Model
             /// <summary>
             /// Enum Nowin for value: nowin
             /// </summary>
-            [EnumMember(Value = "nowin")]
+            [EnumMember(Value = "no win")]
             Nowin = 6
         }
 

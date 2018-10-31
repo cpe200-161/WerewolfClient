@@ -24,6 +24,7 @@ namespace WerewolfClient
         private bool _voteActivated;
         private bool _actionActivated;
         private string _myRole;
+        private bool _isDead;
         private List<Player> players = null;
         public MainForm()
         {
@@ -42,6 +43,7 @@ namespace WerewolfClient
             EnableButton(BtnAction, false);
             EnableButton(BtnVote, false);
             _myRole = null;
+            _isDead = false;
         }
 
         private void OnTimerEvent(object sender, EventArgs e)
@@ -50,10 +52,12 @@ namespace WerewolfClient
             wcmd.Action = CommandEnum.RequestUpdate;
             controller.ActionPerformed(wcmd);
         }
+
         public void AddChatMessage(string str)
         {
-            TbChatBox.Text += str + Environment.NewLine;
+            TbChatBox.AppendText(str + Environment.NewLine);
         }
+
         public void EnableButton(Button btn, bool state)
         {
             btn.Visible = btn.Enabled = state;
@@ -249,6 +253,20 @@ namespace WerewolfClient
                             AddChatMessage("You can't perform action now.");
                         }
                         break;
+                    case EventEnum.YouShotDead:
+                        AddChatMessage("You're shot dead by gunner.");
+                        _isDead = true;
+                        break;
+                    case EventEnum.OtherShotDead:
+                        AddChatMessage(wm.EventPayloads["Game.Target.Name"] + " was shot dead by gunner.");
+                        break;
+                    case EventEnum.Alive:
+                        if (_isDead)
+                        {
+                            AddChatMessage("You've been revived by medium.");
+                            _isDead = false;
+                        }
+                        break;
                 }
                 // need to reset event
                 wm.Event = EventEnum.NOP;
@@ -287,6 +305,11 @@ namespace WerewolfClient
 
         private void BtnAction_Click(object sender, EventArgs e)
         {
+            if (_isDead)
+            {
+                AddChatMessage("You're dead!!");
+                return;
+            }
             if (_actionActivated)
             {
                 BtnAction.BackColor = Button.DefaultBackColor;
@@ -332,6 +355,11 @@ namespace WerewolfClient
                 wcmd.Payloads = new Dictionary<string, string>() { { "Target", players[index].Id.ToString() } };
                 controller.ActionPerformed(wcmd);
             }
+        }
+
+        private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            Environment.Exit();
         }
     }
 }

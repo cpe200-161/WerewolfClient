@@ -439,6 +439,7 @@
             this.Controls.Add(this.GBPlayers);
             this.Name = "MainForm";
             this.Text = "Werewolf Client";
+            this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.MainForm_FormClosing);
             this.GBPlayers.ResumeLayout(false);
             this.GBChat.ResumeLayout(false);
             this.GBChat.PerformLayout();

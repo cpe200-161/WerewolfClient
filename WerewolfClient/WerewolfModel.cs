@@ -50,6 +50,9 @@ namespace WerewolfClient
             UpdateTime = 10,
             Vote = 11,
             Action = 12,
+            YouShotDead = 13,
+            OtherShotDead = 14,
+            Alive = 15,
         }
         public const string ROLE_SEER = "Seer";
         public const string ROLE_AURA_SEER = "Aura Seer";
@@ -123,10 +126,8 @@ namespace WerewolfClient
         {
             lock(this)
             {
-                // Update player;
                 try
                 {
-                    //_player = _playerEP.GetPlayerById(_player.Id);
                     _game = _gameEP.GetGameById(_game.Id);
                     _players = _game.Players;
                 }
@@ -212,6 +213,28 @@ namespace WerewolfClient
                 {
                     if (_game.Status == Game.StatusEnum.Playing) // still playing
                     {
+                        foreach (Player player in _players)
+                        {
+                            if (player.Status == Player.StatusEnum.Shotdead)
+                            {
+                                if (player.Id == Player.Id)
+                                {
+                                    _event = EventEnum.YouShotDead;
+                                }
+                                else
+                                {
+                                    _event = EventEnum.OtherShotDead;
+                                    _eventPayloads["Game.Target.Id"] = player.Id.ToString();
+                                    _eventPayloads["Game.Target.Name"] = player.Name;
+                                }
+                                NotifyAll();
+                            }
+                        }
+                        if (Player.Status == Player.StatusEnum.Alive)
+                        {
+                            _event = EventEnum.Alive;
+                            NotifyAll();
+                        }
                         _currentTime++;
                         if (_game.Period != _currentPeriod) // change period
                         {
