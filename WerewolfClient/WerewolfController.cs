@@ -18,6 +18,7 @@ namespace WerewolfClient
             LeaveGame = 6,
             Vote = 7,
             Action = 8,
+            Chat = 9,
         };
         public new CommandEnum Action { get; set; }
     }
@@ -70,6 +71,9 @@ namespace WerewolfClient
                             break;
                         case WerewolfCommand.CommandEnum.Action:
                             wm.Action(cmd.Payloads["Target"]);
+                            break;
+                        case WerewolfCommand.CommandEnum.Chat:
+                            wm.Chat(cmd.Payloads["Message"]);
                             break;
                     }
                 }

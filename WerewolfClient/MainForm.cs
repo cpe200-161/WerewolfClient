@@ -167,10 +167,10 @@ namespace WerewolfClient
                     case EventEnum.GameStarted:
                         players = wm.Players;
                         _myRole = wm.EventPayloads["Player.Role.Name"];
-                        AddChatMessage( "Your role is " + _myRole + ".");
+                        AddChatMessage("Your role is " + _myRole + ".");
                         _currentPeriod = Game.PeriodEnum.Night;
                         EnableButton(BtnAction, true);
-                        switch(_myRole)
+                        switch (_myRole)
                         {
                             case WerewolfModel.ROLE_PRIEST:
                                 BtnAction.Text = WerewolfModel.ACTION_HOLYWATER;
@@ -212,12 +212,12 @@ namespace WerewolfClient
                         UpdateAvatar(wm);
                         break;
                     case EventEnum.SwitchToDayTime:
-                        AddChatMessage( "Switch to day time of day #" + wm.EventPayloads["Game.Current.Day"] + ".");
+                        AddChatMessage("Switch to day time of day #" + wm.EventPayloads["Game.Current.Day"] + ".");
                         _currentPeriod = Game.PeriodEnum.Day;
                         LBPeriod.Text = "Day time of";
                         break;
                     case EventEnum.SwitchToNightTime:
-                        AddChatMessage( "Switch to night time of day #" + wm.EventPayloads["Game.Current.Day"] + ".");
+                        AddChatMessage("Switch to night time of day #" + wm.EventPayloads["Game.Current.Day"] + ".");
                         _currentPeriod = Game.PeriodEnum.Night;
                         LBPeriod.Text = "Night time of";
                         break;
@@ -261,10 +261,36 @@ namespace WerewolfClient
                         AddChatMessage(wm.EventPayloads["Game.Target.Name"] + " was shot dead by gunner.");
                         break;
                     case EventEnum.Alive:
-                        if (_isDead)
+                        AddChatMessage(wm.EventPayloads["Game.Target.Name"] + " has been revived by medium.");
+                        if (wm.EventPayloads["Game.Target.Id"] == null)
                         {
-                            AddChatMessage("You've been revived by medium.");
                             _isDead = false;
+                        }
+                        break;
+                    case EventEnum.ChatMessage:
+                        if (wm.EventPayloads["Success"] == WerewolfModel.TRUE)
+                        {
+                            AddChatMessage(wm.EventPayloads["Game.Chatter"] + ":" + wm.EventPayloads["Game.ChatMessage"]);
+                        }
+                        break;
+                    case EventEnum.Chat:
+                        if (wm.EventPayloads["Success"] == WerewolfModel.FALSE)
+                        {
+                            switch (wm.EventPayloads["Error"])
+                            {
+                                case "403":
+                                    AddChatMessage("You're not alive, can't talk now.");
+                                    break;
+                                case "404":
+                                    AddChatMessage("You're not existed, can't talk now.");
+                                    break;
+                                case "405":
+                                    AddChatMessage("You're not in a game, can't talk now.");
+                                    break;
+                                case "406":
+                                    AddChatMessage("You're not allow to talk now, go to sleep.");
+                                    break;
+                            }
                         }
                         break;
                 }
@@ -360,6 +386,18 @@ namespace WerewolfClient
         private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
         {
             Environment.Exit(0);
+        }
+
+        private void TbChatInput_Enter(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Return && TbChatInput.Text != "")
+            {
+                WerewolfCommand wcmd = new WerewolfCommand();
+                wcmd.Action = CommandEnum.Chat;
+                wcmd.Payloads = new Dictionary<string, string>() { { "Message", TbChatInput.Text } };
+                TbChatInput.Text = "";
+                controller.ActionPerformed(wcmd);
+            }
         }
     }
 }

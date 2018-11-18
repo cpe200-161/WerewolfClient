@@ -1,13 +1,12 @@
 ﻿using System;
+using System.Text;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using WerewolfAPI.Client;
 using WerewolfAPI.Api;
 using WerewolfAPI.Model;
 using System.Threading;
 using Action = WerewolfAPI.Model.Action;
+using WerewolfAPI.Client;
 
 namespace WerewolfClient
 {
@@ -18,6 +17,7 @@ namespace WerewolfClient
         private GameApi _gameEP;
         private ActionApi _actionEP;
         private RoleApi _roleEP;
+        private ChatApi _chatEP;
 
         private List<Role> _roles = null;
         private List<Action> _actions = null;
@@ -31,10 +31,13 @@ namespace WerewolfClient
         private int _currentTime;
         private List<Player> _players = null;
         public List<Player> Players { get => _players; }
+        private List<Player> _prevPlayers = null;
+        public List<Player> PrevPlayers { get => _prevPlayers; }
 
         public const string TRUE = "True";
         public const string FALSE = "False";
-         
+        private long? latestChatId = 0;
+
 
         public enum EventEnum
         {
@@ -53,6 +56,8 @@ namespace WerewolfClient
             YouShotDead = 13,
             OtherShotDead = 14,
             Alive = 15,
+            Chat = 16,
+            ChatMessage = 17,
         }
         public const string ROLE_SEER = "Seer";
         public const string ROLE_AURA_SEER = "Aura Seer";
@@ -106,9 +111,15 @@ namespace WerewolfClient
         private void InitilizeModel(string basepath)
         {
             _playerEP = new PlayerApi(basepath);
+            _playerEP.ExceptionFactory = null;
             _gameEP = new GameApi(basepath);
+            _gameEP.ExceptionFactory = null;
             _actionEP = new ActionApi(basepath);
+            _actionEP.ExceptionFactory = null;
             _roleEP = new RoleApi(basepath);
+            _roleEP.ExceptionFactory = null;
+            _chatEP = new ChatApi(basepath);
+            _chatEP.ExceptionFactory = null;
 
             try
             {
@@ -124,11 +135,12 @@ namespace WerewolfClient
 
         public void Update()
         {
-            lock(this)
+            lock (this)
             {
                 try
                 {
                     _game = _gameEP.GetGameById(_game.Id);
+                    _prevPlayers = _players;
                     _players = _game.Players;
                 }
                 catch (Exception ex)
@@ -201,11 +213,8 @@ namespace WerewolfClient
                             {
                                 //TODO should show error, issue #13
                                 _eventPayloads["Player.Role.Name"] = "";
-
                             }
-
                         }
-
                     }
                     NotifyAll();
                 }
@@ -215,7 +224,8 @@ namespace WerewolfClient
                     {
                         foreach (Player player in _players)
                         {
-                            if (player.Status == Player.StatusEnum.Shotdead)
+                            Player prevPlayer = _prevPlayers.Where(p => p.Id == player.Id).Single<Player>();
+                            if (player.Status == Player.StatusEnum.Shotdead && prevPlayer.Status != Player.StatusEnum.Shotdead)
                             {
                                 if (player.Id == Player.Id)
                                 {
@@ -229,11 +239,16 @@ namespace WerewolfClient
                                 }
                                 NotifyAll();
                             }
-                        }
-                        if (Player.Status == Player.StatusEnum.Alive)
-                        {
-                            _event = EventEnum.Alive;
-                            NotifyAll();
+                            if (player.Status == Player.StatusEnum.Alive && prevPlayer.Status != Player.StatusEnum.Alive)
+                            {
+                                _event = EventEnum.Alive;
+                                if (player.Id != Player.Id)
+                                {
+                                    _eventPayloads["Game.Target.Id"] = player.Id.ToString();
+                                    _eventPayloads["Game.Target.Name"] = player.Name;
+                                }
+                                NotifyAll();
+                            }
                         }
                         _currentTime++;
                         if (_game.Period != _currentPeriod) // change period
@@ -274,11 +289,44 @@ namespace WerewolfClient
                         _eventPayloads["Game.Outcome"] = _game.Outcome.ToString();
                         NotifyAll();
                     }
+                    try
+                    {
+                        //List<ChatMessage> messages = _chatEP.ChatSessionIDChatIDGet(_player.Session, latestChatId);
+                        ApiResponse<List<ChatMessage>> localResponse = _chatEP.ChatSessionIDChatIDGetWithHttpInfo(_player.Session, latestChatId);
+                        if (localResponse.StatusCode == 200)
+                        {
+                            List<ChatMessage> messages = localResponse.Data;
+                            long? maxChatId = messages.Max<ChatMessage>(m => m.Id);
+                            if (maxChatId != null && maxChatId >= latestChatId)
+                            {
+                                latestChatId = maxChatId + 1;
+                            }
+                            Console.WriteLine("Latest chat id is {0} status is {1}", latestChatId, localResponse.StatusCode);
+                            StringBuilder sb = new StringBuilder();
+                            foreach (ChatMessage message in messages)
+                            {
+                                // I hate this
+                                _event = EventEnum.ChatMessage;
+                                _eventPayloads["Success"] = TRUE;
+                                _eventPayloads["Game.Chatter"] = _players.Where(p => p.Id == message.Playerid).Single().Name;
+                                _eventPayloads["Game.ChatMessage"] = message.Message.ToString();
+                                NotifyAll();
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine("No chat data because of " + localResponse.StatusCode);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine(ex.ToString());
+                    }
 
                 }
             }
         }
-    
+
         public void JoinGame()
         {
             if (_player == null)
@@ -341,7 +389,7 @@ namespace WerewolfClient
                 PlayerApi playerEP = new PlayerApi(server);
                 Player p = new Player(null, login, password, null, null, null, Player.StatusEnum.Offline);
                 _player = playerEP.AddPlayer(p);
-                
+
                 Console.WriteLine(_player.Id);
                 _event = EventEnum.SignIn;
                 _eventPayloads["Success"] = TRUE;
@@ -398,6 +446,44 @@ namespace WerewolfClient
 
             }
             NotifyAll();
+        }
+
+        internal void Chat(string v)
+        {
+            try
+            {
+                ChatMessage message = new ChatMessage(null, _game.Id, _player.Id, v, null);
+                //_chatEP.ChatSessionIDPost(_player.Session, message);
+                ApiResponse<Object> localResponse =  _chatEP.ChatSessionIDPostWithHttpInfo(_player.Session, message);
+                if (localResponse.StatusCode == 201)
+                {
+                    _event = EventEnum.Chat;
+                    _eventPayloads["Success"] = TRUE;
+                }
+                else
+                {
+                    _event = EventEnum.Chat;
+                    _eventPayloads["Success"] = FALSE;
+                    _eventPayloads["Error"] = localResponse.StatusCode.ToString();
+                    Console.WriteLine("Send chat failed {0} {1}", localResponse.StatusCode, localResponse.ToString());
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.ToString());
+                _event = EventEnum.Chat;
+                _eventPayloads["Success"] = FALSE;
+                _eventPayloads["Error"] = ex.ToString();
+            }
+            NotifyAll();
+        }
+
+        public new void NotifyAll()
+        {
+            base.NotifyAll();
+            //reset event
+            _event = EventEnum.NOP;
+            _eventPayloads.Clear();
         }
     }
 }

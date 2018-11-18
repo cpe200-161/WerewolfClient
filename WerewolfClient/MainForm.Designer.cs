@@ -47,7 +47,7 @@
             this.BtnPlayer1 = new System.Windows.Forms.Button();
             this.BtnPlayer0 = new System.Windows.Forms.Button();
             this.GBChat = new System.Windows.Forms.GroupBox();
-            this.textBox2 = new System.Windows.Forms.TextBox();
+            this.TbChatInput = new System.Windows.Forms.TextBox();
             this.TbChatBox = new System.Windows.Forms.TextBox();
             this.GBAction = new System.Windows.Forms.GroupBox();
             this.BtnJoin = new System.Windows.Forms.Button();
@@ -300,7 +300,7 @@
             // 
             // GBChat
             // 
-            this.GBChat.Controls.Add(this.textBox2);
+            this.GBChat.Controls.Add(this.TbChatInput);
             this.GBChat.Controls.Add(this.TbChatBox);
             this.GBChat.Location = new System.Drawing.Point(413, 12);
             this.GBChat.Name = "GBChat";
@@ -309,13 +309,14 @@
             this.GBChat.TabStop = false;
             this.GBChat.Text = "Chat";
             // 
-            // textBox2
+            // TbChatInput
             // 
-            this.textBox2.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.textBox2.Location = new System.Drawing.Point(15, 433);
-            this.textBox2.Name = "textBox2";
-            this.textBox2.Size = new System.Drawing.Size(354, 26);
-            this.textBox2.TabIndex = 1;
+            this.TbChatInput.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.TbChatInput.Location = new System.Drawing.Point(15, 433);
+            this.TbChatInput.Name = "TbChatInput";
+            this.TbChatInput.Size = new System.Drawing.Size(354, 26);
+            this.TbChatInput.TabIndex = 1;
+            this.TbChatInput.KeyDown += new System.Windows.Forms.KeyEventHandler(this.TbChatInput_Enter);
             // 
             // TbChatBox
             // 
@@ -470,7 +471,7 @@
         private System.Windows.Forms.Button BtnPlayer1;
         private System.Windows.Forms.Button BtnPlayer0;
         private System.Windows.Forms.GroupBox GBChat;
-        private System.Windows.Forms.TextBox textBox2;
+        private System.Windows.Forms.TextBox TbChatInput;
         private System.Windows.Forms.TextBox TbChatBox;
         private System.Windows.Forms.GroupBox GBAction;
         private System.Windows.Forms.Button BtnVote;
